@@ -1,7 +1,8 @@
 """Wrapper around CTGAN model."""
 
 import numpy as np
-from ctgan import CTGANSynthesizer, TVAESynthesizer
+from ctgan import TVAESynthesizer
+from ctgan.synthesizers.ctgan import LightningCTGANSynthesizer as CTGANSynthesizer
 
 from sdv.tabular.base import BaseTabularModel
 
@@ -29,7 +30,7 @@ class CTGANModel(BaseTabularModel):
             table_data (pandas.DataFrame):
                 Data to be learned.
         """
-        self._model = self._build_model()
+        
 
         categoricals = []
         fields_before_transform = self._metadata.get_fields()
@@ -53,11 +54,14 @@ class CTGANModel(BaseTabularModel):
                     kind = 'O'
                 if kind in ['O', 'b']:
                     categoricals.append(field)
-
-        self._model.fit(
-            table_data,
-            discrete_columns=categoricals
-        )
+        self._model_kwargs['table_data'] = table_data
+        self._model_kwargs['categoricals'] = categoricals
+        self._model = self._build_model()
+        
+        # self._model.fit(
+        #     table_data,
+        #     discrete_columns=categoricals
+        # )
 
     def _sample(self, num_rows, conditions=None):
         """Sample the indicated number of rows from the model.
