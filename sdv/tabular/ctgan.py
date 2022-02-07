@@ -2,7 +2,8 @@
 
 import numpy as np
 from ctgan import TVAESynthesizer
-from ctgan.synthesizers.ctgan import LightningCTGANSynthesizer as CTGANSynthesizer
+from ctgan.synthesizers.ctgan import LightningCTGANSynthesizer
+from ctgan.synthesizers.ctgan import CTGANSynthesizer
 
 from sdv.tabular.base import BaseTabularModel
 
@@ -58,10 +59,10 @@ class CTGANModel(BaseTabularModel):
         self._model_kwargs['categoricals'] = categoricals
         self._model = self._build_model()
         
-        # self._model.fit(
-        #     table_data,
-        #     discrete_columns=categoricals
-        # )
+        self._model.fit(
+            table_data,
+            discrete_columns=categoricals
+        )
 
     def _sample(self, num_rows, conditions=None):
         """Sample the indicated number of rows from the model.
@@ -175,16 +176,20 @@ class CTGAN(CTGANModel):
             is given, the maximum will be the maximum value seen in the fitted data. If ``None``
             is given, there won't be a maximum. Defaults to ``'auto'``.
     """
-
-    _MODEL_CLASS = CTGANSynthesizer
-
+    
     def __init__(self, field_names=None, field_types=None, field_transformers=None,
                  anonymize_fields=None, primary_key=None, constraints=None, table_metadata=None,
                  embedding_dim=128, generator_dim=(256, 256), discriminator_dim=(256, 256),
                  generator_lr=2e-4, generator_decay=1e-6, discriminator_lr=2e-4,
                  discriminator_decay=1e-6, batch_size=500, discriminator_steps=1,
                  log_frequency=True, verbose=False, epochs=300, pac=10, cuda=True,
-                 rounding='auto', min_value='auto', max_value='auto'):
+                 rounding='auto', min_value='auto', max_value='auto', use_lightning_model=True):
+        
+        if use_lightning_model:
+            self._MODEL_CLASS = LightningCTGANSynthesizer
+        else:
+            self._MODEL_CLASS = CTGANSynthesizer
+        
         super().__init__(
             field_names=field_names,
             primary_key=primary_key,

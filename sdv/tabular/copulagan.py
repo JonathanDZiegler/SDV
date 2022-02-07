@@ -154,7 +154,7 @@ class CopulaGAN(CTGAN):
                  discriminator_decay=1e-6, batch_size=500, discriminator_steps=1,
                  log_frequency=True, verbose=False, epochs=300, cuda=True,
                  field_distributions=None, default_distribution=None, rounding='auto',
-                 min_value='auto', max_value='auto'):
+                 min_value='auto', max_value='auto', use_lightning_model=True):
         super().__init__(
             field_names=field_names,
             primary_key=primary_key,
@@ -178,7 +178,8 @@ class CopulaGAN(CTGAN):
             cuda=cuda,
             rounding=rounding,
             max_value=max_value,
-            min_value=min_value
+            min_value=min_value,
+            use_lightning_model=use_lightning_model
         )
         self._field_distributions = field_distributions or dict()
         self._default_distribution = default_distribution or self.DEFAULT_DISTRIBUTION
