@@ -1,9 +1,13 @@
 """Combination of GaussianCopula transformation and GANs."""
 
+import re
 from rdt import HyperTransformer
 from rdt.transformers import GaussianCopulaTransformer
-
+from ctgan.synthesizers.ctgan import LightningCTGANSynthesizer
 from sdv.tabular.ctgan import CTGAN
+import os
+import torch
+import copy
 
 
 class CopulaGAN(CTGAN):
@@ -155,6 +159,7 @@ class CopulaGAN(CTGAN):
                  log_frequency=True, verbose=False, epochs=300, cuda=True,
                  field_distributions=None, default_distribution=None, rounding='auto',
                  min_value='auto', max_value='auto', use_lightning_model=True):
+        self.use_lightning_model = use_lightning_model
         super().__init__(
             field_names=field_names,
             primary_key=primary_key,
@@ -220,6 +225,8 @@ class CopulaGAN(CTGAN):
         table_data = self._ht.fit_transform(table_data)
 
         super()._fit(table_data)
+        self.data_dim = self._model.data_dim
+        self._model_kwargs['data_dim'] = self.data_dim
 
     def _sample(self, num_rows, conditions=None):
         """Sample the indicated number of rows from the model.
@@ -238,3 +245,37 @@ class CopulaGAN(CTGAN):
         """
         sampled = super()._sample(num_rows, conditions)
         return self._ht.reverse_transform(sampled)
+
+    def save(self, path, trainer=None):
+        if not self.use_lightning_model:
+            super().save(os.path.join(path, 'copulagan.pickle'))
+        else:
+            lightning_path = os.path.join(path, 'lightning_model.ckpt')
+            trainer.save_checkpoint(lightning_path)
+
+            meta_path = os.path.join(path, 'lightning_meta.pkl')
+            torch.save({'transformer': self._model._transformer,
+                        'data_sampler': self._model._data_sampler}, meta_path)
+
+            # story temporary copy of lightning model to add back into CopulaGAN model once save is complete
+            lightning_model = copy.deepcopy(self._model)
+            del self._model
+            super().save(os.path.join(path, 'copulagan.pickle'))
+            self._model = lightning_model
+
+    @classmethod
+    def load(cls, path):
+        model = super().load(os.path.join(path, 'copulagan.pickle'))
+        if model.use_lightning_model:
+            lightning_path = os.path.join(path, 'lightning_model.ckpt')
+            meta_path = os.path.join(path, 'lightning_meta.pkl')
+            with open(meta_path, 'rb') as f:
+                meta = torch.load(f)
+            lightning_model = LightningCTGANSynthesizer(**model._model_kwargs,
+                                                        transformer=meta['transformer'],
+                                                        data_sampler=meta['data_sampler'])
+            checkpoint = torch.load(lightning_path)
+            lightning_model.load_state_dict(checkpoint['state_dict'])
+            model._model = lightning_model
+
+        return model
