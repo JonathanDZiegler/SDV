@@ -1,7 +1,7 @@
 """Wrapper around CTGAN model."""
 
 import numpy as np
-from ctgan import TVAESynthesizer
+from ctgan.synthesizers.tvae import TVAESynthesizer
 from ctgan.synthesizers.ctgan import LightningCTGANSynthesizer
 from ctgan.synthesizers.ctgan import CTGANSynthesizer
 
